@@ -1,18 +1,22 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Habit } from "@/types";
+import { Habit, RecurringType, StreakData } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { generateId } from "@/lib/utils";
 
 interface HabitStore {
   habits: Habit[];
   isLoading: boolean;
+  streak: StreakData;
   loadHabits: () => Promise<void>;
-  addHabit: (title: string, description: string, category: string) => Promise<void>;
+  loadStreak: () => Promise<void>;
+  addHabit: (title: string, description: string, category: string, recurringType: RecurringType) => Promise<void>;
   toggleComplete: (id: string) => Promise<void>;
   archiveHabit: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   getTodayProgress: () => number;
+  resetRecurringHabits: () => Promise<void>;
+  updateStreak: () => Promise<void>;
 }
 
 export const useHabitStore = create<HabitStore>()(
@@ -20,6 +24,11 @@ export const useHabitStore = create<HabitStore>()(
     (set, get) => ({
       habits: [],
       isLoading: false,
+      streak: {
+        currentStreak: 0,
+        lastCompletedDate: null,
+        longestStreak: 0,
+      },
 
       // Load habits from Supabase or localStorage
       loadHabits: async () => {
@@ -51,6 +60,8 @@ export const useHabitStore = create<HabitStore>()(
         description: h.description || undefined,
         category: h.category,
         status: h.status as "active" | "completed" | "archived",
+        recurringType: (h.recurring_type || "once") as RecurringType,
+        lastCompletedDate: h.last_completed_date ? new Date(h.last_completed_date) : undefined,
         createdAt: new Date(h.created_at),
         completedAt: h.completed_at ? new Date(h.completed_at) : undefined,
       }));
@@ -62,8 +73,40 @@ export const useHabitStore = create<HabitStore>()(
     }
   },
 
+  // Load streak data
+  loadStreak: async () => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("user_streaks")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") throw error;
+
+      if (data) {
+        set({
+          streak: {
+            currentStreak: data.current_streak,
+            lastCompletedDate: data.last_completed_date,
+            longestStreak: data.longest_streak,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error loading streak:", error);
+    }
+  },
+
   // Add new habit
-  addHabit: async (title, description, category) => {
+  addHabit: async (title, description, category, recurringType = "once") => {
     // If Supabase not configured, use localStorage
     if (!isSupabaseConfigured) {
       const newHabit: Habit = {
@@ -72,6 +115,7 @@ export const useHabitStore = create<HabitStore>()(
         description: description || undefined,
         category,
         status: "active",
+        recurringType,
         createdAt: new Date(),
       };
       set((state) => ({ habits: [newHabit, ...state.habits] }));
@@ -90,6 +134,7 @@ export const useHabitStore = create<HabitStore>()(
           description: description || null,
           category,
           status: "active",
+          recurring_type: recurringType,
         })
         .select()
         .single();
@@ -103,6 +148,8 @@ export const useHabitStore = create<HabitStore>()(
           description: data.description || undefined,
           category: data.category,
           status: data.status as "active" | "completed" | "archived",
+          recurringType: (data.recurring_type || "once") as RecurringType,
+          lastCompletedDate: data.last_completed_date ? new Date(data.last_completed_date) : undefined,
           createdAt: new Date(data.created_at),
           completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         };
@@ -154,6 +201,11 @@ export const useHabitStore = create<HabitStore>()(
             : h
         ),
       }));
+
+      // Update streak if completing a task
+      if (newStatus === "completed") {
+        await get().updateStreak();
+      }
     } catch (error) {
       console.error("Error toggling habit:", error);
     }
@@ -219,6 +271,138 @@ export const useHabitStore = create<HabitStore>()(
 
     const completed = activeHabits.filter((h) => h.status === "completed").length;
     return Math.round((completed / activeHabits.length) * 100);
+  },
+
+  // Reset recurring habits (daily/weekly)
+  resetRecurringHabits: async () => {
+    if (!isSupabaseConfigured) {
+      // For localStorage, reset based on date
+      const today = new Date().toDateString();
+      set((state) => ({
+        habits: state.habits.map((h) => {
+          if (h.recurringType === "daily" && h.completedAt) {
+            const completedDate = new Date(h.completedAt).toDateString();
+            if (completedDate !== today) {
+              return { ...h, status: "active", completedAt: undefined };
+            }
+          }
+          return h;
+        }),
+      }));
+      return;
+    }
+
+    try {
+      // Call Supabase function to reset
+      const { error } = await supabase.rpc("reset_daily_habits");
+      if (error) throw error;
+      
+      // Reload habits
+      await get().loadHabits();
+    } catch (error) {
+      console.error("Error resetting habits:", error);
+    }
+  },
+
+  // Update streak when completing a task
+  updateStreak: async () => {
+    if (!isSupabaseConfigured) {
+      // For localStorage, just update local state
+      const today = new Date().toISOString().split("T")[0];
+      const { streak } = get();
+      
+      if (streak.lastCompletedDate === today) {
+        return; // Already updated today
+      }
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+      let newStreak = 1;
+      if (streak.lastCompletedDate === yesterdayStr) {
+        newStreak = streak.currentStreak + 1;
+      }
+
+      set({
+        streak: {
+          currentStreak: newStreak,
+          lastCompletedDate: today,
+          longestStreak: Math.max(newStreak, streak.longestStreak),
+        },
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = new Date().toISOString().split("T")[0];
+      
+      // Get current streak
+      const { data: currentStreak } = await supabase
+        .from("user_streaks")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!currentStreak) {
+        // Create new streak
+        await supabase.from("user_streaks").insert({
+          user_id: user.id,
+          current_streak: 1,
+          longest_streak: 1,
+          last_completed_date: today,
+        });
+        
+        set({
+          streak: {
+            currentStreak: 1,
+            lastCompletedDate: today,
+            longestStreak: 1,
+          },
+        });
+        return;
+      }
+
+      // Check if already updated today
+      if (currentStreak.last_completed_date === today) {
+        return;
+      }
+
+      // Calculate new streak
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+      let newStreak = 1;
+      if (currentStreak.last_completed_date === yesterdayStr) {
+        newStreak = currentStreak.current_streak + 1;
+      }
+
+      const newLongest = Math.max(newStreak, currentStreak.longest_streak);
+
+      // Update streak
+      await supabase
+        .from("user_streaks")
+        .update({
+          current_streak: newStreak,
+          longest_streak: newLongest,
+          last_completed_date: today,
+        })
+        .eq("user_id", user.id);
+
+      set({
+        streak: {
+          currentStreak: newStreak,
+          lastCompletedDate: today,
+          longestStreak: newLongest,
+        },
+      });
+    } catch (error) {
+      console.error("Error updating streak:", error);
+    }
   },
     }),
     {

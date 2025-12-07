@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS public.habits (
   description TEXT,
   category TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'archived')),
+  recurring_type TEXT NOT NULL DEFAULT 'once' CHECK (recurring_type IN ('once', 'daily', 'weekly')),
+  last_completed_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   completed_at TIMESTAMP WITH TIME ZONE,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

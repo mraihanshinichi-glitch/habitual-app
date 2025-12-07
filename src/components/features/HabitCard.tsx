@@ -49,9 +49,16 @@ export default function HabitCard({ habit }: HabitCardProps) {
           {habit.description && (
             <p className="text-sm text-text-secondary mb-3">{habit.description}</p>
           )}
-          <Badge variant={getCategoryColor(habit.category)}>
-            {habit.category}
-          </Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={getCategoryColor(habit.category)}>
+              {habit.category}
+            </Badge>
+            {habit.recurringType !== "once" && (
+              <Badge variant="bg-indigo-600">
+                {habit.recurringType === "daily" ? "🔄 Harian" : "📅 Mingguan"}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Menu */}

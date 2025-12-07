@@ -10,6 +10,7 @@ import Navbar from "@/components/features/Navbar";
 import HabitCard from "@/components/features/HabitCard";
 import AddHabitModal from "@/components/features/AddHabitModal";
 import SearchAndFilter from "@/components/features/SearchAndFilter";
+import StreakDisplay from "@/components/features/StreakDisplay";
 import Button from "@/components/ui/Button";
 import { getGreeting } from "@/lib/utils";
 import { Habit } from "@/types";
@@ -19,7 +20,7 @@ type SortType = "name-asc" | "name-desc" | "category" | "date-new" | "date-old";
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, checkAuth, isLoading: authLoading } = useAuthStore();
-  const { habits: allHabits, getTodayProgress, loadHabits } = useHabitStore();
+  const { habits: allHabits, getTodayProgress, loadHabits, loadStreak, resetRecurringHabits, streak } = useHabitStore();
   const { getAllCategories, loadSettings } = useSettingsStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -42,8 +43,10 @@ export default function DashboardPage() {
     if (isAuthenticated && user) {
       loadHabits();
       loadSettings();
+      loadStreak();
+      resetRecurringHabits();
     }
-  }, [isAuthenticated, user, loadHabits, loadSettings]);
+  }, [isAuthenticated, user, loadHabits, loadSettings, loadStreak, resetRecurringHabits]);
 
   // Filter dan sort habits
   const filteredAndSortedHabits = useMemo(() => {
@@ -116,6 +119,14 @@ export default function DashboardPage() {
           <p className="text-text-secondary">
             Mari kita bangun kebiasaan baik hari ini
           </p>
+        </div>
+
+        {/* Streak Display */}
+        <div className="mb-6">
+          <StreakDisplay 
+            currentStreak={streak.currentStreak} 
+            longestStreak={streak.longestStreak}
+          />
         </div>
 
         {/* Progress Bar */}
