@@ -54,7 +54,7 @@ export const useSettingsStore = create<SettingsStore>()(
 
       set({
         theme: settings?.theme || "dark",
-        customCategories: categories?.map((c) => c.name) || [],
+        customCategories: categories?.map((c: any) => c.name) || [],
         isLoading: false,
       });
     } catch (error) {

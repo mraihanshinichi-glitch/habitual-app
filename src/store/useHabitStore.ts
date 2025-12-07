@@ -45,7 +45,7 @@ export const useHabitStore = create<HabitStore>()(
 
       if (error) throw error;
 
-      const habits: Habit[] = (data || []).map((h) => ({
+      const habits: Habit[] = (data || []).map((h: any) => ({
         id: h.id,
         title: h.title,
         description: h.description || undefined,
