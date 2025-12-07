@@ -20,20 +20,24 @@ CREATE TABLE IF NOT EXISTS public.user_streaks (
 -- 3. Enable RLS untuk user_streaks
 ALTER TABLE public.user_streaks ENABLE ROW LEVEL SECURITY;
 
--- 4. Create Policies untuk user_streaks
+-- 4. Create Policies untuk user_streaks (drop if exists first)
+DROP POLICY IF EXISTS "Users can view own streak" ON public.user_streaks;
 CREATE POLICY "Users can view own streak"
   ON public.user_streaks FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own streak" ON public.user_streaks;
 CREATE POLICY "Users can insert own streak"
   ON public.user_streaks FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own streak" ON public.user_streaks;
 CREATE POLICY "Users can update own streak"
   ON public.user_streaks FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- 5. Create trigger untuk auto-update updated_at di user_streaks
+DROP TRIGGER IF EXISTS update_user_streaks_updated_at ON public.user_streaks;
 CREATE TRIGGER update_user_streaks_updated_at
   BEFORE UPDATE ON public.user_streaks
   FOR EACH ROW

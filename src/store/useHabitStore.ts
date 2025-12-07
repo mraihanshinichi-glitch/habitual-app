@@ -178,6 +178,11 @@ export const useHabitStore = create<HabitStore>()(
             : h
         ),
       }));
+
+      // Update streak if completing a task
+      if (newStatus === "completed") {
+        get().updateStreak();
+      }
       return;
     }
 
@@ -202,9 +207,9 @@ export const useHabitStore = create<HabitStore>()(
         ),
       }));
 
-      // Update streak if completing a task
+      // Update streak if completing a task (don't await to avoid blocking UI)
       if (newStatus === "completed") {
-        await get().updateStreak();
+        get().updateStreak().catch((err) => console.error("Error updating streak:", err));
       }
     } catch (error) {
       console.error("Error toggling habit:", error);
@@ -306,12 +311,18 @@ export const useHabitStore = create<HabitStore>()(
 
   // Update streak when completing a task
   updateStreak: async () => {
+    console.log("updateStreak called");
+    
     if (!isSupabaseConfigured) {
       // For localStorage, just update local state
       const today = new Date().toISOString().split("T")[0];
       const { streak } = get();
       
+      console.log("Current streak:", streak);
+      console.log("Today:", today);
+      
       if (streak.lastCompletedDate === today) {
+        console.log("Already updated today");
         return; // Already updated today
       }
 
@@ -323,6 +334,8 @@ export const useHabitStore = create<HabitStore>()(
       if (streak.lastCompletedDate === yesterdayStr) {
         newStreak = streak.currentStreak + 1;
       }
+
+      console.log("New streak:", newStreak);
 
       set({
         streak: {
@@ -340,21 +353,32 @@ export const useHabitStore = create<HabitStore>()(
 
       const today = new Date().toISOString().split("T")[0];
       
+      console.log("Supabase mode - updating streak for today:", today);
+      
       // Get current streak
-      const { data: currentStreak } = await supabase
+      const { data: currentStreak, error: fetchError } = await supabase
         .from("user_streaks")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
-      if (!currentStreak) {
+      console.log("Current streak from DB:", currentStreak);
+      console.log("Fetch error:", fetchError);
+
+      if (!currentStreak || fetchError?.code === "PGRST116") {
         // Create new streak
-        await supabase.from("user_streaks").insert({
+        console.log("Creating new streak");
+        const { error: insertError } = await supabase.from("user_streaks").insert({
           user_id: user.id,
           current_streak: 1,
           longest_streak: 1,
           last_completed_date: today,
         });
+        
+        if (insertError) {
+          console.error("Error inserting streak:", insertError);
+          throw insertError;
+        }
         
         set({
           streak: {
