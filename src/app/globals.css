@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Dark theme (default) */
+  body {
+    @apply bg-background text-text-primary;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Light theme */
+  .light body {
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  .light .bg-background {
+    @apply bg-gray-50;
+  }
+
+  .light .bg-surface {
+    @apply bg-white;
+  }
+
+  .light .text-text-primary {
+    @apply text-gray-900;
+  }
+
+  .light .text-text-secondary {
+    @apply text-gray-600;
+  }
+
+  .light .border-primary\/10 {
+    @apply border-gray-200;
+  }
+
+  .light .border-primary\/20 {
+    @apply border-gray-300;
+  }
+
+  .light .hover\:bg-surface\/50:hover {
+    @apply bg-gray-100;
+  }
+
+  .light .hover\:bg-primary\/10:hover {
+    @apply bg-purple-100;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A0B2E;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8B5CF6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A78BFA;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.2s ease-out, zoom-in 0.2s ease-out;
+}
