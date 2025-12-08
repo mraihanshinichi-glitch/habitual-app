@@ -10,10 +10,22 @@ interface HabitStore {
   streak: StreakData;
   loadHabits: () => Promise<void>;
   loadStreak: () => Promise<void>;
-  addHabit: (title: string, description: string, category: string, recurringType: RecurringType) => Promise<void>;
+  addHabit: (
+    title: string,
+    description: string,
+    category: string,
+    recurringType: RecurringType,
+    timerDuration?: number
+  ) => Promise<void>;
+  updateHabit: (
+    id: string,
+    updates: Partial<Pick<Habit, "title" | "description" | "category" | "recurringType" | "timerDuration">>
+  ) => Promise<void>;
   toggleComplete: (id: string) => Promise<void>;
   archiveHabit: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
+  startTimer: (id: string) => Promise<void>;
+  stopTimer: (id: string, completed: boolean) => Promise<void>;
   getTodayProgress: () => number;
   resetRecurringHabits: () => Promise<void>;
   updateStreak: () => Promise<void>;
@@ -62,6 +74,8 @@ export const useHabitStore = create<HabitStore>()(
         status: h.status as "active" | "completed" | "archived",
         recurringType: (h.recurring_type || "once") as RecurringType,
         lastCompletedDate: h.last_completed_date ? new Date(h.last_completed_date) : undefined,
+        timerDuration: h.timer_duration || undefined,
+        timerStartedAt: h.timer_started_at ? new Date(h.timer_started_at) : undefined,
         createdAt: new Date(h.created_at),
         completedAt: h.completed_at ? new Date(h.completed_at) : undefined,
       }));
@@ -106,7 +120,7 @@ export const useHabitStore = create<HabitStore>()(
   },
 
   // Add new habit
-  addHabit: async (title, description, category, recurringType = "once") => {
+  addHabit: async (title, description, category, recurringType = "once", timerDuration) => {
     // If Supabase not configured, use localStorage
     if (!isSupabaseConfigured) {
       const newHabit: Habit = {
@@ -116,6 +130,7 @@ export const useHabitStore = create<HabitStore>()(
         category,
         status: "active",
         recurringType,
+        timerDuration,
         createdAt: new Date(),
       };
       set((state) => ({ habits: [newHabit, ...state.habits] }));
@@ -135,6 +150,7 @@ export const useHabitStore = create<HabitStore>()(
           category,
           status: "active",
           recurring_type: recurringType,
+          timer_duration: timerDuration || null,
         })
         .select()
         .single();
@@ -150,6 +166,8 @@ export const useHabitStore = create<HabitStore>()(
           status: data.status as "active" | "completed" | "archived",
           recurringType: (data.recurring_type || "once") as RecurringType,
           lastCompletedDate: data.last_completed_date ? new Date(data.last_completed_date) : undefined,
+          timerDuration: data.timer_duration || undefined,
+          timerStartedAt: data.timer_started_at ? new Date(data.timer_started_at) : undefined,
           createdAt: new Date(data.created_at),
           completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         };
@@ -426,6 +444,134 @@ export const useHabitStore = create<HabitStore>()(
       });
     } catch (error) {
       console.error("Error updating streak:", error);
+    }
+  },
+
+  // Update habit
+  updateHabit: async (id, updates) => {
+    if (!isSupabaseConfigured) {
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id ? { ...h, ...updates } : h
+        ),
+      }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("habits")
+        .update({
+          title: updates.title,
+          description: updates.description || null,
+          category: updates.category,
+          recurring_type: updates.recurringType,
+          timer_duration: updates.timerDuration || null,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id ? { ...h, ...updates } : h
+        ),
+      }));
+    } catch (error) {
+      console.error("Error updating habit:", error);
+    }
+  },
+
+  // Start timer
+  startTimer: async (id) => {
+    const now = new Date();
+    
+    if (!isSupabaseConfigured) {
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id ? { ...h, timerStartedAt: now } : h
+        ),
+      }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("habits")
+        .update({
+          timer_started_at: now.toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id ? { ...h, timerStartedAt: now } : h
+        ),
+      }));
+    } catch (error) {
+      console.error("Error starting timer:", error);
+    }
+  },
+
+  // Stop timer
+  stopTimer: async (id, completed) => {
+    if (!isSupabaseConfigured) {
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id
+            ? {
+                ...h,
+                timerStartedAt: undefined,
+                status: completed ? "completed" : h.status,
+                completedAt: completed ? new Date() : h.completedAt,
+              }
+            : h
+        ),
+      }));
+
+      if (completed) {
+        get().updateStreak();
+      }
+      return;
+    }
+
+    try {
+      const updates: any = {
+        timer_started_at: null,
+      };
+
+      if (completed) {
+        updates.status = "completed";
+        updates.completed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from("habits")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id
+            ? {
+                ...h,
+                timerStartedAt: undefined,
+                status: completed ? "completed" : h.status,
+                completedAt: completed ? new Date() : h.completedAt,
+              }
+            : h
+        ),
+      }));
+
+      if (completed) {
+        get().updateStreak();
+      }
+    } catch (error) {
+      console.error("Error stopping timer:", error);
     }
   },
     }),

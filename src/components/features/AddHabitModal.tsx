@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Repeat, Calendar, Sparkles } from "lucide-react";
+import { Repeat, Calendar, Sparkles, Timer } from "lucide-react";
 import Modal from "../ui/Modal";
 import Input from "../ui/Input";
 import Button from "../ui/Button";
@@ -23,6 +23,7 @@ export default function AddHabitModal({ isOpen, onClose }: AddHabitModalProps) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(categories[0]);
   const [recurringType, setRecurringType] = useState<RecurringType>("once");
+  const [timerDuration, setTimerDuration] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const { addHabit } = useHabitStore();
 
@@ -31,13 +32,15 @@ export default function AddHabitModal({ isOpen, onClose }: AddHabitModalProps) {
     
     if (!title.trim()) return;
     
-    addHabit(title, description, category, recurringType);
+    const duration = timerDuration ? parseInt(timerDuration) : undefined;
+    addHabit(title, description, category, recurringType, duration);
     
     // Reset form
     setTitle("");
     setDescription("");
     setCategory(categories[0]);
     setRecurringType("once");
+    setTimerDuration("");
     onClose();
   };
 
@@ -177,6 +180,25 @@ export default function AddHabitModal({ isOpen, onClose }: AddHabitModalProps) {
                 <span className="text-sm font-medium">Mingguan</span>
               </button>
             </div>
+          </div>
+
+          {/* Timer Duration */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2 flex items-center gap-2">
+              <Timer className="w-4 h-4" />
+              Timer (Opsional)
+            </label>
+            <Input
+              type="number"
+              placeholder="Durasi dalam menit"
+              value={timerDuration}
+              onChange={(e) => setTimerDuration(e.target.value)}
+              min="1"
+              max="480"
+            />
+            <p className="text-xs text-text-secondary mt-1">
+              Jika diisi, kamu harus menyelesaikan tugas dalam waktu yang ditentukan
+            </p>
           </div>
 
           <div>

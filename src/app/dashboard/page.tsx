@@ -11,9 +11,11 @@ import HabitCard from "@/components/features/HabitCard";
 import AddHabitModal from "@/components/features/AddHabitModal";
 import SearchAndFilter from "@/components/features/SearchAndFilter";
 import StreakDisplay from "@/components/features/StreakDisplay";
+import CategoryStats from "@/components/features/CategoryStats";
+import MoodTracker from "@/components/features/MoodTracker";
 import Button from "@/components/ui/Button";
 import { getGreeting } from "@/lib/utils";
-import { Habit } from "@/types";
+import { Habit, MoodType } from "@/types";
 
 type SortType = "name-asc" | "name-desc" | "category" | "date-new" | "date-old";
 
@@ -23,6 +25,7 @@ export default function DashboardPage() {
   const { habits: allHabits, getTodayProgress, loadHabits, loadStreak, resetRecurringHabits, streak } = useHabitStore();
   const { getAllCategories, loadSettings } = useSettingsStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMoodTrackerOpen, setIsMoodTrackerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortType>("date-new");
@@ -32,6 +35,21 @@ export default function DashboardPage() {
     setMounted(true);
     checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
+      // Check if mood was tracked today
+      const today = new Date().toISOString().split("T")[0];
+      const lastMoodDate = localStorage.getItem("lastMoodDate");
+      
+      if (lastMoodDate !== today) {
+        // Show mood tracker after 1 second
+        setTimeout(() => {
+          setIsMoodTrackerOpen(true);
+        }, 1000);
+      }
+    }
+  }, [mounted, isAuthenticated]);
 
   useEffect(() => {
     if (mounted && !authLoading && !isAuthenticated) {
@@ -129,6 +147,11 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Category Statistics */}
+        <div className="mb-6">
+          <CategoryStats habits={allHabits} period={30} />
+        </div>
+
         {/* Progress Bar */}
         <div className="bg-surface border border-primary/10 rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -200,10 +223,22 @@ export default function DashboardPage() {
         )}
       </main>
 
-      {/* Modal */}
+      {/* Modals */}
       <AddHabitModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+      
+      <MoodTracker
+        isOpen={isMoodTrackerOpen}
+        onClose={() => setIsMoodTrackerOpen(false)}
+        onSubmit={(mood: MoodType, note: string) => {
+          // Save mood to localStorage for now
+          const today = new Date().toISOString().split("T")[0];
+          localStorage.setItem("lastMoodDate", today);
+          localStorage.setItem(`mood_${today}`, JSON.stringify({ mood, note }));
+          console.log("Mood saved:", mood, note);
+        }}
       />
     </div>
   );
