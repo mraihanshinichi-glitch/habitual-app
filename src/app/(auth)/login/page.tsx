@@ -38,7 +38,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-block w-16 h-16 bg-gradient-to-br from-primary to-primary-light rounded-2xl mb-4" />
           <h1 className="text-3xl font-bold text-text-primary mb-2">Habitual</h1>
-          <p className="text-text-secondary">Masuk ke akun Anda</p>
+          <p className="text-text-secondary">Masuk ke akun Anda untuk melanjutkan</p>
         </div>
 
         {/* Form */}

@@ -4,7 +4,7 @@
 
 ### ✅ Checklist
 - [x] Aplikasi berjalan dengan baik di localhost
-- [x] Supabase sudah dikonfigurasi dan berfungsi
+- [x] Supabase sudah dikonfigurasi dan berfungsi dengan benar
 - [x] File `.env.local` sudah diisi dengan benar
 - [x] Git repository sudah dibuat
 

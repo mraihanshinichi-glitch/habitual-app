@@ -45,7 +45,7 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <div className="inline-block w-16 h-16 bg-gradient-to-br from-primary to-primary-light rounded-2xl mb-4" />
           <h1 className="text-3xl font-bold text-text-primary mb-2">Habitual</h1>
-          <p className="text-text-secondary">Buat akun baru</p>
+          <p className="text-text-secondary">Buat akun baru untuk menggunakan Habitual</p>
         </div>
 
         {/* Form */}
@@ -96,7 +96,7 @@ export default function RegisterPage() {
           <p className="text-center text-text-secondary text-sm mt-6">
             Sudah punya akun?{" "}
             <Link href="/login" className="text-primary hover:text-primary-light">
-              Masuk di sini
+              Masuk di sini ke akun yang dipunyai
             </Link>
           </p>
         </div>
