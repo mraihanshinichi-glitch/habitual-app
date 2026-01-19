@@ -88,7 +88,7 @@ export default function HabitCard({ habit }: HabitCardProps) {
         </button>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-12">
           <h3
             className={cn(
               "text-lg font-semibold text-text-primary mb-1",
@@ -113,12 +113,12 @@ export default function HabitCard({ habit }: HabitCardProps) {
         </div>
 
         {/* Menu */}
-        <div className="relative">
+        <div className="relative z-30">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowMenu(!showMenu)}
-            className="rounded-full p-2"
+            className="rounded-full p-2 z-30"
           >
             <MoreVertical className="w-5 h-5" />
           </Button>
