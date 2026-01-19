@@ -20,17 +20,34 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       isLoading: true,
 
-      // Check authentication status
-      checkAuth: async () => {
-        // If Supabase not configured, use localStorage
-        if (!isSupabaseConfigured) {
-          set({ isLoading: false });
-          return;
-        }
-
+  // Check authentication status
+  checkAuth: async () => {
+    // If Supabase not configured, use localStorage
+    if (!isSupabaseConfigured) {
+      // Check if we have persisted auth data
+      const persistedState = localStorage.getItem("habitual-auth");
+      if (persistedState) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-      
+          const parsedState = JSON.parse(persistedState);
+          if (parsedState.state && parsedState.state.isAuthenticated) {
+            set({
+              user: parsedState.state.user,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing persisted auth:", e);
+        }
+      }
+      set({ isLoading: false });
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
       if (session?.user) {
         // Get user profile
         const { data: profile } = await supabase
@@ -52,7 +69,7 @@ export const useAuthStore = create<AuthStore>()(
           return;
         }
       }
-      
+
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error) {
       console.error("Auth check error:", error);

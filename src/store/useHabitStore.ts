@@ -23,6 +23,7 @@ interface HabitStore {
   ) => Promise<void>;
   toggleComplete: (id: string) => Promise<void>;
   archiveHabit: (id: string) => Promise<void>;
+  unarchiveHabit: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   startTimer: (id: string) => Promise<void>;
   stopTimer: (id: string, completed: boolean) => Promise<void>;
@@ -264,6 +265,36 @@ export const useHabitStore = create<HabitStore>()(
     }
   },
 
+  // Unarchive habit
+  unarchiveHabit: async (id) => {
+    // If Supabase not configured, use localStorage
+    if (!isSupabaseConfigured) {
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id ? { ...h, status: "active" as const } : h
+        ),
+      }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("habits")
+        .update({ status: "active" })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id ? { ...h, status: "active" as const } : h
+        ),
+      }));
+    } catch (error) {
+      console.error("Error unarchiving habit:", error);
+    }
+  },
+
   // Delete habit
   deleteHabit: async (id) => {
     // If Supabase not configured, use localStorage
@@ -300,12 +331,23 @@ export const useHabitStore = create<HabitStore>()(
   resetRecurringHabits: async () => {
     if (!isSupabaseConfigured) {
       // For localStorage, reset based on date
-      const today = new Date().toDateString();
+      const today = new Date();
+      const todayDate = today.toDateString();
+      const todayDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
       set((state) => ({
         habits: state.habits.map((h) => {
-          if (h.recurringType === "daily" && h.completedAt) {
-            const completedDate = new Date(h.completedAt).toDateString();
-            if (completedDate !== today) {
+          if (h.status === "completed" && h.completedAt) {
+            const completedDate = new Date(h.completedAt);
+            const completedDateStr = completedDate.toDateString();
+
+            // Reset daily habits if not completed today
+            if (h.recurringType === "daily" && completedDateStr !== todayDate) {
+              return { ...h, status: "active", completedAt: undefined };
+            }
+
+            // Reset weekly habits if it's Monday and not completed today
+            if (h.recurringType === "weekly" && todayDay === 1 && completedDateStr !== todayDate) {
               return { ...h, status: "active", completedAt: undefined };
             }
           }
@@ -317,9 +359,9 @@ export const useHabitStore = create<HabitStore>()(
 
     try {
       // Call Supabase function to reset
-      const { error } = await supabase.rpc("reset_daily_habits");
+      const { error } = await supabase.rpc("reset_recurring_habits");
       if (error) throw error;
-      
+
       // Reload habits
       await get().loadHabits();
     } catch (error) {

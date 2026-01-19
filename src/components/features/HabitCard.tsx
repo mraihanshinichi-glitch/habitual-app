@@ -1,7 +1,7 @@
 "use client";
 
 import { Habit } from "@/types";
-import { Check, MoreVertical, Archive, Trash2, Edit, Timer, Play, Pause } from "lucide-react";
+import { Check, MoreVertical, Archive, Trash2, Edit, Timer, Play, Pause, ArchiveRestore } from "lucide-react";
 import { useState, useEffect } from "react";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
@@ -20,7 +20,7 @@ export default function HabitCard({ habit }: HabitCardProps) {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showTimerComplete, setShowTimerComplete] = useState(false);
-  const { toggleComplete, archiveHabit, deleteHabit, startTimer, stopTimer } = useHabitStore();
+  const { toggleComplete, archiveHabit, unarchiveHabit, deleteHabit, startTimer, stopTimer } = useHabitStore();
 
   const isCompleted = habit.status === "completed";
   const hasTimer = habit.timerDuration && habit.timerDuration > 0;
@@ -130,36 +130,63 @@ export default function HabitCard({ habit }: HabitCardProps) {
                 onClick={() => setShowMenu(false)}
               />
               <div className="absolute right-0 top-10 z-20 bg-surface border border-primary/20 rounded-lg shadow-xl overflow-hidden min-w-[150px]">
-                <button
-                  onClick={() => {
-                    setShowEditModal(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-primary/10 hover:text-text-primary flex items-center gap-2 transition-colors"
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    archiveHabit(habit.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-primary/10 hover:text-text-primary flex items-center gap-2 transition-colors"
-                >
-                  <Archive className="w-4 h-4" />
-                  Arsipkan
-                </button>
-                <button
-                  onClick={() => {
-                    deleteHabit(habit.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Hapus
-                </button>
+                {habit.status === "archived" ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        unarchiveHabit(habit.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-primary/10 hover:text-text-primary flex items-center gap-2 transition-colors"
+                    >
+                      <ArchiveRestore className="w-4 h-4" />
+                      Batalkan Arsip
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteHabit(habit.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Hapus
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowEditModal(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-primary/10 hover:text-text-primary flex items-center gap-2 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        archiveHabit(habit.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-primary/10 hover:text-text-primary flex items-center gap-2 transition-colors"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Arsipkan
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteHabit(habit.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-primary/10 hover:text-text-primary flex items-center gap-2 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Hapus
+                    </button>
+                  </>
+                )}
               </div>
             </>
           )}
